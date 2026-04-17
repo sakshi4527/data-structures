@@ -1,235 +1,302 @@
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#define N 100
+#define MAX_STUDENTS 100
+#define NAME_LENGTH 50
 
-struct Student {
-    int roll;
-    char name[50];
-    int sub1, sub2, sub3;
-};
+typedef struct {
+    int id;
+    char name[NAME_LENGTH];
+    float marks;
+} Student;
 
-struct Student stack[N];
-int top = -1;
+typedef struct {
+    Student data[MAX_STUDENTS];
+    int count;
+} StudentDatabase;
 
-// Push
-void push(struct Student s) {
-    if (top == N - 1)
-        printf("Stack Overflow\n");
-    else {
-        stack[++top] = s;
-        printf("Student added.\n");
-    }
+// Initialize database
+void initDB(StudentDatabase *db) {
+    db->count = 0;
 }
 
-// Pop
-void pop() {
-    if (top == -1)
-        printf("Stack Underflow\n");
-    else {
-        printf("Removed: %s\n", stack[top].name);
-        top--;
+// Add a student
+int addStudent(StudentDatabase *db, int id, const char *name, float marks) {
+    if (db->count >= MAX_STUDENTS) {
+        printf("Database full!\n");
+        return 0;
     }
+    
+    Student *s = &db->data[db->count];
+    s->id = id;
+    strncpy(s->name, name, NAME_LENGTH - 1);
+    s->name[NAME_LENGTH - 1] = '\0';
+    s->marks = marks;
+    db->count++;
+    return 1;
 }
 
-// Delete at position
-void deleteAtPosition() {
-    if (top == -1) {
-        printf("No records available.\n");
-        return;
-    }
-
-    int pos;
-    printf("Enter position: ");
-    scanf("%d", &pos);
-
-    if (pos < 1 || pos > top + 1) {
-        printf("Invalid position\n");
-        return;
-    }
-
-    printf("Deleted: %s\n", stack[pos - 1].name);
-
-    for (int i = pos - 1; i < top; i++) {
-        stack[i] = stack[i + 1];
-    }
-    top--;
+// Display a student
+void displayStudent(const Student *s) {
+    printf("ID: %-5d | Name: %-20s | Marks: %.2f\n", s->id, s->name, s->marks);
 }
 
-// Display
-void display() {
-    if (top == -1) {
-        printf("Empty\n");
-        return;
+// Display all students
+void displayAll(const StudentDatabase *db) {
+    printf("\n%-5s | %-20s | %s\n", "ID", "Name", "Marks");
+    printf("------------------------------------------\n");
+    for (int i = 0; i < db->count; i++) {
+        displayStudent(&db->data[i]);
     }
-
-    for (int i = top; i >= 0; i--) {
-        int total = stack[i].sub1 + stack[i].sub2 + stack[i].sub3;
-        float avg = total / 3.0;
-
-        printf("Pos:%d | Roll:%d | Name:%s | Total:%d | Avg:%.2f\n",
-               i + 1, stack[i].roll, stack[i].name, total, avg);
-    }
+    printf("Total students: %d\n", db->count);
 }
 
-// Highest
-void highestTotal() {
-    if (top == -1) {
-        printf("No records available.\n");
-        return;
-    }
+// ============== SORTING ALGORITHMS ==============
 
-    int max = 0, idx = 0;
-
-    for (int i = 0; i <= top; i++) {
-        int total = stack[i].sub1 + stack[i].sub2 + stack[i].sub3;
-        if (total > max) {
-            max = total;
-            idx = i;
+// Quick Sort by marks (descending) - O(n log n) average
+int partitionByMarks(Student arr[], int low, int high) {
+    float pivot = arr[high].marks;
+    int i = low - 1;
+    
+    for (int j = low; j < high; j++) {
+        if (arr[j].marks > pivot) {  // Descending order
+            i++;
+            Student temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
         }
     }
-
-    printf("Top Student: %s (Roll %d) Total: %d\n",
-           stack[idx].name, stack[idx].roll, max);
+    Student temp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = temp;
+    return i + 1;
 }
 
-// Lowest (same naming style)
-void lowestTotal() {
-    if (top == -1) {
-        printf("No records available.\n");
-        return;
+void quickSortByMarks(Student arr[], int low, int high) {
+    if (low < high) {
+        int pi = partitionByMarks(arr, low, high);
+        quickSortByMarks(arr, low, pi - 1);
+        quickSortByMarks(arr, pi + 1, high);
     }
+}
 
-    int min = stack[0].sub1 + stack[0].sub2 + stack[0].sub3;
-    int idx = 0;
-
-    for (int i = 1; i <= top; i++) {
-        int total = stack[i].sub1 + stack[i].sub2 + stack[i].sub3;
-        if (total < min) {
-            min = total;
-            idx = i;
+// Quick Sort by ID (ascending) - O(n log n) average
+int partitionByID(Student arr[], int low, int high) {
+    int pivot = arr[high].id;
+    int i = low - 1;
+    
+    for (int j = low; j < high; j++) {
+        if (arr[j].id < pivot) {
+            i++;
+            Student temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
         }
     }
-
-    printf("Lowest Student: %s (Roll %d) Total: %d\n",
-           stack[idx].name, stack[idx].roll, min);
+    Student temp = arr[i + 1];
+    arr[i + 1] = arr[high];
+    arr[high] = temp;
+    return i + 1;
 }
 
-// Sort
-void sortStudents() {
-    if (top == -1) {
-        printf("No records to sort.\n");
-        return;
+void quickSortByID(Student arr[], int low, int high) {
+    if (low < high) {
+        int pi = partitionByID(arr, low, high);
+        quickSortByID(arr, low, pi - 1);
+        quickSortByID(arr, pi + 1, high);
     }
+}
 
-    struct Student temp;
+// Sort by name (alphabetical) using Merge Sort - O(n log n)
+void merge(Student arr[], int l, int m, int r) {
+    int n1 = m - l + 1;
+    int n2 = r - m;
+    
+    Student *L = malloc(n1 * sizeof(Student));
+    Student *R = malloc(n2 * sizeof(Student));
+    
+    for (int i = 0; i < n1; i++) L[i] = arr[l + i];
+    for (int j = 0; j < n2; j++) R[j] = arr[m + 1 + j];
+    
+    int i = 0, j = 0, k = l;
+    while (i < n1 && j < n2) {
+        if (strcmp(L[i].name, R[j].name) <= 0)
+            arr[k++] = L[i++];
+        else
+            arr[k++] = R[j++];
+    }
+    while (i < n1) arr[k++] = L[i++];
+    while (j < n2) arr[k++] = R[j++];
+    
+    free(L);
+    free(R);
+}
 
-    for (int i = 0; i <= top; i++) {
-        for (int j = i + 1; j <= top; j++) {
-            int t1 = stack[i].sub1 + stack[i].sub2 + stack[i].sub3;
-            int t2 = stack[j].sub1 + stack[j].sub2 + stack[j].sub3;
+void mergeSortByName(Student arr[], int l, int r) {
+    if (l < r) {
+        int m = l + (r - l) / 2;
+        mergeSortByName(arr, l, m);
+        mergeSortByName(arr, m + 1, r);
+        merge(arr, l, m, r);
+    }
+}
 
-            if (t2 > t1) {
-                temp = stack[i];
-                stack[i] = stack[j];
-                stack[j] = temp;
-            }
+// ============== SEARCHING ALGORITHMS ==============
+
+// Binary Search by ID - O(log n) - requires sorted data
+int binarySearchByID(StudentDatabase *db, int id) {
+    quickSortByID(db->data, 0, db->count - 1);  // Ensure sorted
+    
+    int low = 0, high = db->count - 1;
+    while (low <= high) {
+        int mid = low + (high - low) / 2;
+        if (db->data[mid].id == id)
+            return mid;
+        else if (db->data[mid].id < id)
+            low = mid + 1;
+        else
+            high = mid - 1;
+    }
+    return -1;  // Not found
+}
+
+// Linear Search by name - O(n)
+int linearSearchByName(const StudentDatabase *db, const char *name) {
+    for (int i = 0; i < db->count; i++) {
+        if (strcmp(db->data[i].name, name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+// Search students by marks range - O(n)
+void searchByMarksRange(const StudentDatabase *db, float min, float max) {
+    printf("\nStudents with marks between %.2f and %.2f:\n", min, max);
+    printf("------------------------------------------\n");
+    int found = 0;
+    for (int i = 0; i < db->count; i++) {
+        if (db->data[i].marks >= min && db->data[i].marks <= max) {
+            displayStudent(&db->data[i]);
+            found++;
         }
     }
-
-    printf("Students sorted successfully.\n");
+    if (!found) printf("No students found in this range.\n");
 }
 
-// Search
-void searchByRoll() {
-    if (top == -1) {
-        printf("No records available.\n");
-        return;
-    }
+// ============== MENU SYSTEM ==============
 
-    int roll;
-    printf("Enter roll number: ");
-    scanf("%d", &roll);
-
-    for (int i = 0; i <= top; i++) {
-        if (stack[i].roll == roll) {
-            int total = stack[i].sub1 + stack[i].sub2 + stack[i].sub3;
-            float avg = total / 3.0;
-
-            printf("Found: Roll:%d | Name:%s | Total:%d | Avg:%.2f\n",
-                   stack[i].roll, stack[i].name, total, avg);
-            return;
-        }
-    }
-
-    printf("Student not found.\n");
+void printMenu() {
+    printf("\n========== STUDENT MARKS SYSTEM ==========\n");
+    printf("1. Add Student\n");
+    printf("2. Display All Students\n");
+    printf("3. Sort by Marks (Descending)\n");
+    printf("4. Sort by ID (Ascending)\n");
+    printf("5. Sort by Name (Alphabetical)\n");
+    printf("6. Search by ID (Binary Search)\n");
+    printf("7. Search by Name (Linear Search)\n");
+    printf("8. Search by Marks Range\n");
+    printf("0. Exit\n");
+    printf("==========================================\n");
+    printf("Choice: ");
 }
 
-// Main
 int main() {
+    StudentDatabase db;
+    initDB(&db);
+    
+    // Sample data
+    addStudent(&db, 101, "Alice Johnson", 85.5);
+    addStudent(&db, 103, "Bob Smith", 72.0);
+    addStudent(&db, 102, "Charlie Brown", 91.5);
+    addStudent(&db, 105, "Diana Ross", 68.0);
+    addStudent(&db, 104, "Eve Wilson", 95.0);
+    
     int choice;
-    struct Student s;
-
     do {
-        printf("\n--- Menu ---\n");
-        printf("1.Add Student\n");
-        printf("2.Remove Latly Added Student\n");
-        printf("3.Display Records\n");
-        printf("4.Highest Marks\n");
-        printf("5.Lowest Marks\n");
-        printf("6.Sort Students\n");
-        printf("7.Search by Roll\n");
-        printf("8.Delete at Position\n");
-        printf("0.Exit\n");
-
-        printf("Enter choice: ");
+        printMenu();
         scanf("%d", &choice);
-
+        getchar();  // Clear newline
+        
         switch (choice) {
-            case 1:
-                printf("Enter Roll, Name, Marks(3): ");
-                scanf("%d %s %d %d %d",
-                      &s.roll, s.name, &s.sub1, &s.sub2, &s.sub3);
-                push(s);
+            case 1: {
+                int id;
+                char name[NAME_LENGTH];
+                float marks;
+                printf("Enter ID: ");
+                scanf("%d", &id);
+                getchar();
+                printf("Enter Name: ");
+                fgets(name, NAME_LENGTH, stdin);
+                name[strcspn(name, "\n")] = '\0';
+                printf("Enter Marks: ");
+                scanf("%f", &marks);
+                addStudent(&db, id, name, marks);
+                printf("Student added successfully!\n");
                 break;
-
+            }
             case 2:
-                pop();
+                displayAll(&db);
                 break;
-
             case 3:
-                display();
+                quickSortByMarks(db.data, 0, db.count - 1);
+                printf("Sorted by marks (highest first):\n");
+                displayAll(&db);
                 break;
-
             case 4:
-                highestTotal();
+                quickSortByID(db.data, 0, db.count - 1);
+                printf("Sorted by ID:\n");
+                displayAll(&db);
                 break;
-
             case 5:
-                lowestTotal();
+                mergeSortByName(db.data, 0, db.count - 1);
+                printf("Sorted by name:\n");
+                displayAll(&db);
                 break;
-
-            case 6:
-                sortStudents();
+            case 6: {
+                int id;
+                printf("Enter ID to search: ");
+                scanf("%d", &id);
+                int idx = binarySearchByID(&db, id);
+                if (idx != -1) {
+                    printf("Found:\n");
+                    displayStudent(&db.data[idx]);
+                } else {
+                    printf("Student not found.\n");
+                }
                 break;
-
-            case 7:
-                searchByRoll();
+            }
+            case 7: {
+                char name[NAME_LENGTH];
+                printf("Enter name to search: ");
+                fgets(name, NAME_LENGTH, stdin);
+                name[strcspn(name, "\n")] = '\0';
+                int idx = linearSearchByName(&db, name);
+                if (idx != -1) {
+                    printf("Found:\n");
+                    displayStudent(&db.data[idx]);
+                } else {
+                    printf("Student not found.\n");
+                }
                 break;
-
-            case 8:
-                deleteAtPosition();
+            }
+            case 8: {
+                float min, max;
+                printf("Enter minimum marks: ");
+                scanf("%f", &min);
+                printf("Enter maximum marks: ");
+                scanf("%f", &max);
+                searchByMarksRange(&db, min, max);
                 break;
-
+            }
             case 0:
-                printf("Exiting...\n");
+                printf("Goodbye!\n");
                 break;
-
             default:
-                printf("Invalid choice\n");
+                printf("Invalid choice.\n");
         }
-
     } while (choice != 0);
-
+    
     return 0;
 }
